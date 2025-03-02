@@ -1,0 +1,114 @@
+direction: right
+
+// Layer Labels
+L0: {
+  label: "L0: Data Ingestion"
+  style: {
+    fill: "#f3f4f6"
+    stroke-dash: 5
+  }
+}
+L1: {
+  label: "L1: Data Transformation"
+  style: {
+    fill: "#e5e7eb"
+    stroke-dash: 5
+  }
+}
+L2: {
+  label: "L2: Analytics & Insights"
+  style: {
+    fill: "#d1d5db"
+    stroke-dash: 5
+  }
+}
+
+// L0 Components
+publicdatafeed: {
+  label: "Public Data Feed (Network Rail)"
+  icon: "https://icons.terrastruct.com/public-data.svg"
+}
+accuweather: {
+  label: "AccuWeather API"
+  icon: "https://icons.terrastruct.com/weather.svg"
+}
+kafka_producer_trains: {
+  label: "Kafka Producer (Trains)"
+  icon: "https://icons.terrastruct.com/kafka.svg"
+}
+kafka_producer_weather: {
+  label: "Kafka Producer (Weather)"
+  icon: "https://icons.terrastruct.com/kafka.svg"
+}
+kafka_topic_trains: {
+  label: "Kafka Topic (Trains)"
+}
+kafka_topic_weather: {
+  label: "Kafka Topic (Weather)"
+}
+
+// L1 Components
+kafka_consumer_trains: {
+  label: "Kafka Consumer (Trains)"
+}
+kafka_consumer_weather: {
+  label: "Kafka Consumer (Weather)"
+}
+snowflake_staging_trains: {
+  label: "Snowflake Staging (Trains)"
+  icon: "https://icons.terrastruct.com/snowflake.svg"
+}
+snowflake_staging_weather: {
+  label: "Snowflake Staging (Weather)"
+  icon: "https://icons.terrastruct.com/snowflake.svg"
+}
+dbt_staging_trains: {
+  label: "DBT Staging Model (Trains)"
+}
+dbt_staging_weather: {
+  label: "DBT Staging Model (Weather)"
+}
+dbt_seed_station_mapping: {
+  label: "DBT Seed\n(Station Code Mapping)"
+}
+
+// L2 Components
+dbt_l1_trains_weather: {
+  label: "DBT L1 Models\n(Train+Weather Info)"
+  style: {stroke-dash: "5"}
+}
+dbt_mart_fact_table: {
+  label: "Mart Fact Table\n(Delays & Weather)"
+}
+
+// Connections
+publicdatafeed -> kafka_producer_trains -> kafka_topic_trains -> kafka_consumer_trains -> snowflake_staging_trains -> dbt_staging_trains -> dbt_l1_trains_weather -> dbt_mart_fact_table
+accuweather -> kafka_producer_weather -> kafka_topic_weather -> kafka_consumer_weather -> snowflake_staging_weather -> dbt_staging_weather -> dbt_l1_trains_weather
+
+// Additional Connection for DBT Seed
+dbt_seed_station_mapping -> dbt_l1_trains_weather
+
+// Grouping Layers
+L0: {
+  publicdatafeed
+  accuweather
+  kafka_producer_trains
+  kafka_producer_weather
+  kafka_topic_trains
+  kafka_topic_weather
+}
+
+L1: {
+  kafka_consumer_trains
+  kafka_consumer_weather
+  snowflake_staging_trains
+  snowflake_staging_weather
+  dbt_staging_trains
+  dbt_staging_weather
+  dbt_seed_station_mapping
+}
+
+L2: {
+  dbt_l1_trains_weather
+  dbt_mart_fact_table
+}

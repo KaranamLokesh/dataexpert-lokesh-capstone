@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: stg_train_movement  # Replace with the name of your dbt model
+    description: "A model that fetches the latest 100 train movement records."
+    columns:
+      - name: TRAIN_ID
+        description: "Unique identifier for the train."
+        tests:
+          - not_null
+
+      - name: ACTUAL_TIMESTAMP
+        description: "The actual timestamp of the train event."
+        tests:
+          - not_null
+
+      - name: LOC_STANOX
+        description: "Location STANOX code where the event occurred."
+        tests:
+          - not_null
+
+
+      - name: PLANNED_EVENT_TYPE
+        description: "Type of planned event (e.g., arrival, departure)."
+        tests:
+          - accepted_values:
+              values: ['ARRIVAL', 'DEPARTURE', 'DESTINATION']  # Replace with actual valid values if different
+
+      - name: EVENT_TYPE
+        description: "Type of actual event (e.g., arrival, departure)."
+        tests:
+          - accepted_values:
+              values: ['ARRIVAL', 'DEPARTURE', 'PASS']  # Replace with actual valid values if different
+
+      - name: EVENT_SOURCE
+        description: "Source of the event data."
+        tests:
+          - not_null
+
+      - name: CORRECTION_IND
+        description: "Indicates whether this is a correction to a previous record."
+        tests:
+          - accepted_values:
+              values: ['true', 'false']  # Adjust based on your data
+
+      - name: OFFROUTE_IND
+        description: "Indicates whether the train is off its planned route."
+        tests:
+          - accepted_values:
+              values: ['true', 'false']  # Adjust based on your data
+
+      - name: DIRECTION_IND
+        description: "Direction indicator for the train's movement."
+        tests:
+          - accepted_values:
+              values: ['UP', 'DOWN', null]  # Replace with actual valid values if different
+
+      - name: TIMETABLE_VARIATION
+        description: "Difference between planned and actual timings."
+        tests:
+          - not_null
+          - is_positive
+
+      - name: DELAY_MONITORING_POINT
+        description: "Indicates whether this is a delay monitoring point."
+        tests:
+          - accepted_values:
+              values: ['true', 'false']  # Adjust based on your data
+
+
+

@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: stg_weather_data  # Replace with the name of your dbt model
+    description: "A model that fetches the latest weather data for each city."
+    columns:
+      - name: city
+        description: "The name of the city."
+        tests:
+          - not_null
+          - unique  # Ensures only one record per city (latest weather data)
+
+      - name: temperature
+        description: "The current temperature in the city."
+        tests:
+          - not_null
+          - relationships:
+              to: source('train_data', 'weather_data')
+              field: temperature  # Ensures this column references valid data
+
+      - name: HUMIDITY
+        description: "The current humidity percentage in the city."
+        tests:
+          - not_null
+          - accepted_range:
+              min_value: 0
+              max_value: 100  # Humidity should be between 0% and 100%
+
+      - name: pressure
+        description: "The atmospheric pressure in hPa."
+        tests:
+          - not_null
+          - accepted_range:
+              min_value: 800
+              max_value: 1200  # Typical range for atmospheric pressure
+
+      - name: visibility
+        description: "The visibility distance in meters."
+        tests:
+          - accepted_range:
+              min_value: 0  # Visibility can't be negative
+              max_value: 9999999
+
+      - name: wind_speed
+        description: "The wind speed in meters per second."
+        tests:
+          - accepted_range:
+              min_value: -1  # Wind speed can't be negative
+              max_value: 1000
+
+      - name: wind_direction
+        description: "The direction of the wind in degrees (0-360)."
+        tests:
+          - accepted_range:
+              min_value: 0
+              max_value: 360
+
+      - name: sunrise
+        description: "The timestamp of sunrise in the city."
+        tests:
+          - not_null
+
+      - name: sunset
+        description: "The timestamp of sunset in the city."
+        tests:
+          - not_null
+
+      - name: weather_description
+        description: "A textual description of the current weather (e.g., clear sky, rain)."
+        tests:
+          - not_null
+
+      - name: cloudiness
+        description: "The percentage of cloud coverage."
+        tests:
+          - accepted_range:
+              min_value: 0
+              max_value: 100  # Cloudiness should be between 0% and 100%
+
+      - name: timestamp
+        description: "The timestamp of the latest weather data for the city."
+        tests:
+          - not_null
+
+

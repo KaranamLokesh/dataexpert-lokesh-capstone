@@ -1,0 +1,63 @@
+{{ config(
+    materialized='table'
+) }}
+
+WITH latest_train_data AS (
+    SELECT
+        TRAIN_ID,
+        ACTUAL_TIMESTAMP,
+        LOC_STANOX,
+        PLANNED_TIMESTAMP,
+        PLANNED_EVENT_TYPE,
+        EVENT_TYPE,
+        EVENT_SOURCE,
+        CORRECTION_IND,
+        OFFROUTE_IND,
+        DIRECTION_IND,
+        LINE_IND,
+        PLATFORM,
+        ROUTE,
+        TRAIN_SERVICE_CODE,
+        DIVISION_CODE,
+        TOC_ID,
+        TIMETABLE_VARIATION,
+        VARIATION_STATUS,
+        NEXT_REPORT_STANOX,
+        NEXT_REPORT_RUN_TIME,
+        TRAIN_TERMINATED,
+        DELAY_MONITORING_POINT,
+        REPORTING_STANOX,
+        AUTO_EXPECTED,
+        LAST_UPDATED_DT,
+        ROW_NUMBER() OVER (ORDER BY ACTUAL_TIMESTAMP DESC) AS row_num
+    FROM 
+        {{ source('train_data', 'train_movement') }}
+)
+SELECT 
+    TRAIN_ID,
+    ACTUAL_TIMESTAMP,
+    LOC_STANOX,
+    PLANNED_TIMESTAMP,
+    PLANNED_EVENT_TYPE,
+    EVENT_TYPE,
+    EVENT_SOURCE,
+    CORRECTION_IND,
+    OFFROUTE_IND,
+    DIRECTION_IND,
+    LINE_IND,
+    PLATFORM,
+    ROUTE,
+    TRAIN_SERVICE_CODE,
+    DIVISION_CODE,
+    TOC_ID,
+    TIMETABLE_VARIATION,
+    VARIATION_STATUS,
+    NEXT_REPORT_STANOX,
+    NEXT_REPORT_RUN_TIME,
+    TRAIN_TERMINATED,
+    DELAY_MONITORING_POINT,
+    REPORTING_STANOX,
+    AUTO_EXPECTED,
+    LAST_UPDATED_DT
+FROM 
+    latest_train_data

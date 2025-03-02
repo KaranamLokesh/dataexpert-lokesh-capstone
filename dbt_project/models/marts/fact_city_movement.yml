@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: fact_city_movement  # Replace with the name of your dbt model
+    description: "A model that combines train delay and weather data"
+    columns:
+      - name: TRAIN_ID
+        description: "Unique identifier for each train"
+        tests:
+          - not_null
+          - unique
+      - name: Date
+        description: "Date of the train's arrival"
+        tests:
+          - not_null
+      - name: ARRIVAL_TIME
+        description: "Actual arrival time of the train"
+        tests:
+          - not_null
+      - name: CURRENT_STATION
+        description: "Current station of the train"
+        tests:
+          - not_null
+      - name: delay_in_minutes
+        description: "Delay in minutes for the train's arrival"
+        tests:
+          - not_null
+          - accepted_range:
+              min_value: -1440  # Visibility can't be negative
+              max_value: 1440
