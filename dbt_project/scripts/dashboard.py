@@ -35,7 +35,7 @@ cols[3].metric("Temp Impact", f"{kpis['TEMP_CORR'][0]:.2f}")
 cols[4].metric("Time Variance", f"{kpis['AVG_TIME_VARIANCE'][0]:.1f} min")
 
 # Main Visualization Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["Operational KPIs", "Temporal Analysis", "Environmental Impact", "Train & Station Metrics"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Operational KPIs", "Temporal Analysis", "Environmental Impact", "Train & Station Metrics", "Platform Metrics"])
 
 
 with tab1:
@@ -261,6 +261,162 @@ with tab4:
         )
     else:
         st.warning("No recent data available for selected train")
+# Add to your existing "Train & Station Metrics" tab (tab4)
+with tab5:
+    st.header("🚉 Station-Specific Platform Analysis")
+    
+    # 1. Station Selection
+    selected_station = st.selectbox(
+        "Select Station",
+        options=session.sql("SELECT DISTINCT CURRENT_STATION FROM FACT_CITY_MOVEMENT").to_pandas()['CURRENT_STATION'],
+        key="platform_station_select"
+    )
+    
+    # 2. Get Platforms for Selected Station
+    @st.cache_data
+    def get_station_platforms(station):
+        return session.sql(f"""
+            SELECT DISTINCT PLATFORM 
+            FROM FACT_CITY_MOVEMENT 
+            WHERE CURRENT_STATION = '{station}'
+        """).to_pandas()['PLATFORM'].tolist()
+    
+    station_platforms = get_station_platforms(selected_station)
+    
+    if not station_platforms:
+        st.warning("No platform data available for selected station")
+        st.stop()
+    
+    # 3. Platform Performance Metrics
+    st.subheader(f"📊 Platform Metrics for {selected_station}")
+    
+    platform_data = session.sql(f"""
+        SELECT
+            PLATFORM,
+            AVG(DELAY_IN_MINUTES) AS avg_delay,
+            COUNT(*) AS total_movements,
+            AVG(TIMEDIFF(MINUTE, PLANNED_ARRIVAL_TIME, ARRIVAL_TIME)) AS time_variance,
+            PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY DELAY_IN_MINUTES) AS p95_delay,
+            COUNT(DISTINCT TRAIN_ID) AS unique_trains,
+            CORR(TEMPERATURE, DELAY_IN_MINUTES) AS temp_corr
+        FROM FACT_CITY_MOVEMENT
+        WHERE CURRENT_STATION = '{selected_station}'
+          AND DATE BETWEEN '{date_range[0]}' AND '{date_range[1]}'
+        GROUP BY PLATFORM
+    """).to_pandas()
+
+    # 4. Platform Comparison Visualization
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.metric("Total Platforms", len(station_platforms))
+        st.dataframe(
+            platform_data,
+            column_config={
+                "PLATFORM": "Platform",
+                "avg_delay": st.column_config.NumberColumn(
+                    "Avg Delay (min)",
+                    format="%.1f"
+                ),
+                "unique_trains": "Unique Trains"
+            },
+            use_container_width=True
+        )
+    
+    with col2:
+        st.subheader("Platform Performance Comparison")
+        if len(station_platforms) > 1:
+            st.bar_chart(
+                platform_data.set_index('PLATFORM')['AVG_DELAY'],
+                color="#FF4B4B"
+            )
+        else:
+            st.info("Single platform station - no comparison available")
+
+    # 5. Space Utilization Analysis (Based on MDPI paper)
+    st.subheader("🚦 Platform Space Utilization")
+    space_metrics = session.sql(f"""
+        SELECT
+            PLATFORM,
+            HOUR(ARRIVAL_TIME) AS hour,
+            COUNT(*) AS movements,
+            COUNT(DISTINCT TRAIN_ID) AS train_density,
+            AVG(DELAY_IN_MINUTES) AS avg_delay
+        FROM FACT_CITY_MOVEMENT
+        WHERE CURRENT_STATION = '{selected_station}'
+          AND DATE BETWEEN '{date_range[0]}' AND '{date_range[1]}'
+        GROUP BY PLATFORM, hour
+    """).to_pandas()
+
+    selected_platform = st.selectbox(
+        "Select Platform for Detailed Analysis",
+        options=station_platforms,
+        key="platform_detail_select"
+    )
+    
+    platform_hourly = space_metrics[space_metrics['PLATFORM'] == selected_platform]
+    
+    tab_a, tab_b = st.tabs(["Congestion Patterns", "Train Density"])
+    
+    with tab_a:
+        st.line_chart(
+            platform_hourly.set_index('HOUR')[['AVG_DELAY', 'MOVEMENTS']],
+            color=["#FF4B4B", "#0068C9"]
+        )
+    
+    with tab_b:
+        st.area_chart(
+            platform_hourly.set_index('HOUR')['TRAIN_DENSITY'],
+            color="#00CC96"
+        )
+
+    # 6. Capacity Analysis (Based on Collective Dynamics paper)
+    st.subheader("🚧 Capacity Recommendations")
+    capacity_data = session.sql(f"""
+        WITH train_sequence AS (
+            SELECT 
+                PLATFORM,
+                ARRIVAL_TIME,
+                DELAY_IN_MINUTES,
+                TIMEDIFF(
+                    MINUTE, 
+                    ARRIVAL_TIME,
+                    LEAD(ARRIVAL_TIME) OVER (
+                        PARTITION BY PLATFORM 
+                        ORDER BY TIMESTAMP_NTZ_FROM_PARTS(DATE, ARRIVAL_TIME)
+                    )
+                ) AS time_gap
+            FROM FACT_CITY_MOVEMENT
+            WHERE CURRENT_STATION = '{selected_station}'
+        )
+        SELECT 
+            PLATFORM,
+            PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY DELAY_IN_MINUTES) AS peak_delay,
+            AVG(time_gap) AS time_between_trains
+        FROM train_sequence
+        GROUP BY PLATFORM
+
+    """).to_pandas()
+
+    cols = st.columns(3)
+    for idx, (_, row) in enumerate(capacity_data.iterrows()):
+        with cols[idx%3]:
+            st.metric(
+                label=f"Platform {row['PLATFORM']}",
+                value=f"{row['PEAK_DELAY']:.1f} min peak delay",
+                delta=f"{(row['TIME_BETWEEN_TRAINS'] or 0):.1f} min avg gap"
+            )
+
+    # 7. Practical Recommendations (Based on Tri-Rail guidelines)
+    with st.expander("🔧 Platform Optimization Tips"):
+        st.write("""
+        **Based on performance analysis:**
+        - Consider platform lengthening for frequent peak-hour congestion
+        - Add shelter coverage during high-delay periods
+        - Implement dynamic signage for crowded platforms
+        - Review maintenance schedules for high-usage platforms
+        """)
+
 
 # Data Freshness
 last_updated = session.sql("SELECT MAX(LAST_UPDATED_DT) FROM FACT_CITY_MOVEMENT").collect()[0][0]
